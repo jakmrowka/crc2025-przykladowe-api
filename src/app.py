@@ -1,68 +1,87 @@
 from flask import Flask, jsonify, request
+import logging
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s"
+)
 
 app = Flask(__name__)
 
-# Przykładowa baza danych w pamięci
 students = [
     {"id": 1, "name": "Jan", "age": 22},
     {"id": 2, "name": "Anna", "age": 23},
 ]
 
-# READ - Pobierz wszystkich studentów
-@app.route('/students', methods=['GET'])
+
+@app.route("/students", methods=["GET"])
 def get_students():
+    logging.info("GET request - all students")
     return jsonify(students)
 
-# READ - Pobierz konkretnego studenta po ID
-@app.route('/students/<int:student_id>', methods=['GET'])
+
+@app.route("/students/<int:student_id>", methods=["GET"])
 def get_student(student_id):
-    student = next((student for student in students if student["id"] == student_id), None)
+    logging.info(f"GET request - student ID: {student_id}")
+    student = next((s for s in students if s["id"] == student_id), None)
     if student:
         return jsonify(student)
+
+    logging.warning(f"Student ID {student_id} not found")
     return jsonify({"message": "Student not found"}), 404
 
-# CREATE - Dodaj nowego studenta
-@app.route('/students', methods=['POST'])
+
+@app.route("/students", methods=["POST"])
 def create_student():
     data = request.get_json()
     new_student = {
         "id": students[-1]["id"] + 1 if students else 1,
         "name": data["name"],
-        "age": data["age"]
+        "age": data["age"],
     }
     students.append(new_student)
+    logging.info(f"POST request - student created: {new_student}")
     return jsonify(new_student), 201
 
-# UPDATE - Aktualizuj dane studenta po ID
-@app.route('/students/<int:student_id>', methods=['PUT'])
+
+@app.route("/students/<int:student_id>", methods=["PUT"])
 def update_student(student_id):
-    student = next((student for student in students if student["id"] == student_id), None)
+    student = next((s for s in students if s["id"] == student_id), None)
     if student:
         data = request.get_json()
-        student.update({
-            "name": data.get("name", student["name"]),
-            "age": data.get("age", student["age"])
-        })
+        student.update(
+            {
+                "name": data.get("name", student["name"]),
+                "age": data.get("age", student["age"]),
+            }
+        )
+        logging.info(f"PUT request - student updated: {student}")
         return jsonify(student)
+
+    logging.warning(f"PUT request - student ID {student_id} not found")
     return jsonify({"message": "Student not found"}), 404
 
-# DELETE - Usuń studenta po ID
-@app.route('/students/<int:student_id>', methods=['DELETE'])
+
+@app.route("/students/<int:student_id>", methods=["DELETE"])
 def delete_student(student_id):
     global students
-    students = [student for student in students if student["id"] != student_id]
+    students = [s for s in students if s["id"] != student_id]
+    logging.info(f"DELETE request - student ID {student_id} deleted")
     return jsonify({"message": "Student deleted"}), 200
 
-# Metoda zwracająca szczegóły żądania
-@app.route('/info', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
-def request_info():
+
+@app.route("/info", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@app.route("/info/<path:param>", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+def request_info(param=None):
     response_data = {
         "method": request.method,
         "headers": dict(request.headers),
         "args": request.args,
-        "json": request.get_json(silent=True)
+        "json": request.get_json(silent=True),
+        "param": param,
     }
+    logging.info(f"INFO request - param: {param}")
     return jsonify(response_data), 200
 
-if __name__ == '__main__':
-    app.run(debug=True)
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000) #http://127.0.0.1:5000
